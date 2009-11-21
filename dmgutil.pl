@@ -73,7 +73,7 @@ SYNOPSIS
                    [--background=file]  [--bgcol=r,g,b]
                    [--toolbar=boolean]  file
 
-     dmgutil --close --volume=name file
+     dmgutil --close --volume=name [--license=file] file
 
 DESCRIPTION
     dmgutil is used to create distribution disk images, and to adjust
@@ -118,6 +118,8 @@ DESCRIPTION
      --close                 Select close mode.
 
      --volume=name           The volume name for the disk image.
+
+     --license=file          The license agreement resource.
 
      file                    The output path for the .dmg file.
 
@@ -580,7 +582,7 @@ sub doClose
 
 
 	# Retrieve our parameters
-	my ($dmgFile, $volName) = @_;
+	my ($dmgFile, $volName, $theLicense) = @_;
 
 
 
@@ -599,6 +601,13 @@ sub doClose
 	print "  compressing $dmgFile\n" if ($kLogging eq "-quiet");
 
 	system("hdiutil", "eject", $kLogging, "/Volumes/$volName");
+
+	if ($theLicense ne "")
+		{
+		system("hdiutil", "unflatten", $kLogging, "$dmgFile.sparseimage");
+		`$Rez -a "$theLicense" -o "$dmgFile.sparseimage"`;
+		system("hdiutil", "flatten", $kLogging, "$dmgFile.sparseimage");
+		}
 
 	system("hdiutil",	"convert",		"$dmgFile.sparseimage",
 						"-format",		"UDZO",
@@ -674,7 +683,7 @@ sub dmgUtil
 	# Retrieve our parameters
 	my ($doOpen,  $doClose,  $doSet)							= (0, 0, 0);
 	my ($posX, $posY, $theWidth, $theHeight, $iconSize)			= (0, 0, 0, 0, 0);
-	my ($volName, $theIcon, $bgImage, $bgColor, $flagToolbar)	= ("", "", "", "", "");
+	my ($volName, $theIcon, $bgImage, $bgColor, $flagToolbar, $theLicense)	= ("", "", "", "", "", "");
 
 	GetOptions(	"--open+",			=> \$doOpen,
 				"--close+",			=> \$doClose,
@@ -688,7 +697,8 @@ sub dmgUtil
 				"--icon=s",			=> \$theIcon,
 				"--background=s",	=> \$bgImage,
 				"--bgcol=s",		=> \$bgColor,
-				"--toolbar=s",		=> \$flagToolbar);
+				"--toolbar=s",		=> \$flagToolbar,
+				"--license=s",		=> \$theLicense);
 
 	my ($thePath) = @ARGV;
 
@@ -704,7 +714,7 @@ sub dmgUtil
 	
 	elsif ($doClose && $thePath ne "" && $volName ne "")
 		{
-		doClose($thePath, $volName);
+		doClose($thePath, $volName, $theLicense);
 		}
 	
 	elsif ($doSet   && $thePath ne "")
